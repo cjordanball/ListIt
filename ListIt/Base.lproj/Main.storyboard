@@ -29,7 +29,14 @@
                             <outlet property="delegate" destination="bvf-Qf-jtF" id="Ayw-iK-rs6"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="List It!" id="8tG-m4-flA"/>
+                    <navigationItem key="navigationItem" title="List It!" id="8tG-m4-flA">
+                        <barButtonItem key="rightBarButtonItem" systemItem="add" id="cFC-ii-CaN">
+                            <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            <connections>
+                                <action selector="addItem:" destination="bvf-Qf-jtF" id="IqS-Jq-94f"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Fot-WU-UR5" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
