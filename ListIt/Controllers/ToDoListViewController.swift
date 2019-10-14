@@ -14,10 +14,15 @@ class ToDoListViewController: UITableViewController {
     
     let defaults = UserDefaults.standard
     
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent(("ListItems.plist"))
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-//        itemArray = defaults.array(forKey:"ToDoListArray") != nil ? defaults.array(forKey: "ToDoListArray") as! [String] : itemArray
+        print(dataFilePath)
+       
+        loadItems()
     }
+
 
     //MARK: TableView DataSource Methods
     
@@ -39,7 +44,7 @@ class ToDoListViewController: UITableViewController {
         
         let item = itemArray[indexPath.row]
         item.done = !item.done
-        self.tableView.reloadData()
+        saveItems(itemArray)
         tableView.deselectRow(at: indexPath, animated: true)
 
         
@@ -57,9 +62,7 @@ class ToDoListViewController: UITableViewController {
             //what will happen upon click
             let newItem = ListItem(textField.text!, false)
             self.itemArray.append(newItem)
-//            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
-            
-            self.tableView.reloadData()
+            self.saveItems(self.itemArray)
         }
 
         alert.addTextField { (alertTextField) in
@@ -70,6 +73,30 @@ class ToDoListViewController: UITableViewController {
         alert.addAction(action)
         
         present(alert, animated: true, completion: nil)
+    }
+    
+    func saveItems(_ items: [ListItem]) {
+        let encoder = PropertyListEncoder()
+        
+        do {
+            let data = try encoder.encode(items)
+            try data.write(to: dataFilePath!)
+        } catch {
+            print("ERROR: \(error)")
+        }
+        self.tableView.reloadData()
+        
+    }
+    
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!) {
+            let decoder = PropertyListDecoder()
+            do {
+                itemArray = try decoder.decode([ListItem].self, from: data)
+            } catch {
+                print(error)
+            }
+        }
     }
     
     private func updateData() {
