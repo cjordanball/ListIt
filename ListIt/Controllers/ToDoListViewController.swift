@@ -44,15 +44,20 @@ class ToDoListViewController: UITableViewController {
         
         let item = itemArray[indexPath.row]
         item.done = !item.done
-        saveItems(itemArray)
-        tableView.deselectRow(at: indexPath, animated: true)
+//        context.delete(itemArray[indexPath.row])
+//        itemArray.remove(at: indexPath.row)
+
+  
+
+        saveItems()
+//        tableView.deselectRow(at: indexPath, animated: true)
 
         
 
     }
     //MARK - Add new items.
     
-    @IBAction func addItem(_ sender: UIBarButtonItem) {
+    @IBAction func addItem(_ sender: UIBarButtonItem){
 
         var textField = UITextField()
         
@@ -65,7 +70,7 @@ class ToDoListViewController: UITableViewController {
             newItem.done = false
             
             self.itemArray.append(newItem)
-            self.saveItems(self.itemArray)
+            self.saveItems()
         }
 
         alert.addTextField { (alertTextField) in
@@ -78,7 +83,7 @@ class ToDoListViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    func saveItems(_ items: [ListItem]) {
+    func saveItems() {
         
         do {
             try context.save()
@@ -92,13 +97,63 @@ class ToDoListViewController: UITableViewController {
     func loadItems() {
         let request: NSFetchRequest<ListItem> = ListItem.fetchRequest()
         do {
+            print("doing it")
             itemArray = try context.fetch(request)
+            print(itemArray.count)
         } catch {
             print("FETCH ERR: \(error)")
         }
     }
-    
+
     private func updateData() {
         print(itemArray)
     }
+}
+
+//MARK: - Search bar methods
+extension ToDoListViewController: UISearchBarDelegate {
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        searchBar.text = searchText.lowercased()
+        var resArray = [ListItem]()
+        
+        let searchTerm = searchText.lowercased()
+               if searchBar.text == "" {
+                   self.loadItems()
+               } else {
+                self.loadItems()
+                   itemArray.forEach{
+                       if $0.title!.lowercased().contains(searchTerm) {
+                           resArray.append($0)
+                       }
+                   }
+                   resArray.forEach{
+                       print($0.title!)
+                   }
+                   itemArray = resArray
+               }
+                self.tableView.reloadData()
+                
+    }
+
+//    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+//////        let request : NSFetchRequest<ListItem> = ListItem.fetchRequest()
+//        var resArray = [ListItem]()
+//        let searchTerm = searchBar.text?.lowercased()
+//        if searchBar.text == "" {
+//            print("inIf")
+//            self.loadItems()
+//        } else {
+//            itemArray.forEach{
+//                if $0.title!.lowercased().contains(searchTerm!) {
+//                    resArray.append($0)
+//                }
+//            }
+//            resArray.forEach{
+//                print($0.title!)
+//            }
+//            itemArray = resArray
+//        }
+//        self.tableView.reloadData()
+//    }
 }
