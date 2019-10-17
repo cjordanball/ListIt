@@ -10,17 +10,19 @@ import UIKit
 import CoreData
 
 class ToDoListViewController: UITableViewController {
-
+    
     var itemArray = [ListItem]()
     
-    let defaults = UserDefaults.standard
-    
+    var selectedCategory: Category? {
+        didSet{
+            loadItems(cat: selectedCategory!)
+        }
+    }
+                             
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
-       
-        loadItems()
     }
 
 
@@ -61,13 +63,17 @@ class ToDoListViewController: UITableViewController {
 
         var textField = UITextField()
         
-        let alert = UIAlertController(title: "Add new todo", message: "", preferredStyle: .alert)
+        let alert = UIAlertController(title: "Add new item", message: "", preferredStyle: .alert)
         
-        let action = UIAlertAction(title: "Add item", style: .default) { (action) in
+        let action = UIAlertAction(title: "Add", style: .default) { (action) in
             //what will happen upon click
+            if textField.text == "" {
+                return
+            }
             let newItem = ListItem(context: self.context)
             newItem.title = textField.text!
             newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             
             self.itemArray.append(newItem)
             self.saveItems()
@@ -94,15 +100,24 @@ class ToDoListViewController: UITableViewController {
         
     }
     
-    func loadItems() {
-        let request: NSFetchRequest<ListItem> = ListItem.fetchRequest()
+    func loadItems(cat: Category, with request: NSFetchRequest<ListItem> = ListItem.fetchRequest()) {
+        
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", cat.name!)
+        let searchPredicate = request.predicate
+        if searchPredicate != nil {
+            print("inIF")
+            let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, searchPredicate!])
+            request.predicate = compoundPredicate
+        } else {
+            request.predicate = categoryPredicate
+        }
         do {
-            print("doing it")
             itemArray = try context.fetch(request)
-            print(itemArray.count)
+            self.tableView.reloadData()
         } catch {
             print("FETCH ERR: \(error)")
         }
+ 
     }
 
     private func updateData() {
@@ -115,45 +130,35 @@ extension ToDoListViewController: UISearchBarDelegate {
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         searchBar.text = searchText.lowercased()
-        var resArray = [ListItem]()
-        
-        let searchTerm = searchText.lowercased()
-               if searchBar.text == "" {
-                   self.loadItems()
-               } else {
-                self.loadItems()
-                   itemArray.forEach{
-                       if $0.title!.lowercased().contains(searchTerm) {
-                           resArray.append($0)
-                       }
-                   }
-                   resArray.forEach{
-                       print($0.title!)
-                   }
-                   itemArray = resArray
-               }
-                self.tableView.reloadData()
-                
-    }
+        if searchText == "" {
+            loadItems(cat: selectedCategory!)
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+            return
+        }
 
-//    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-//////        let request : NSFetchRequest<ListItem> = ListItem.fetchRequest()
-//        var resArray = [ListItem]()
-//        let searchTerm = searchBar.text?.lowercased()
-//        if searchBar.text == "" {
-//            print("inIf")
-//            self.loadItems()
-//        } else {
-//            itemArray.forEach{
-//                if $0.title!.lowercased().contains(searchTerm!) {
-//                    resArray.append($0)
-//                }
-//            }
-//            resArray.forEach{
-//                print($0.title!)
-//            }
-//            itemArray = resArray
-//        }
-//        self.tableView.reloadData()
-//    }
+        let request: NSFetchRequest<ListItem> = ListItem.fetchRequest()
+        
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        
+        self.loadItems(cat: selectedCategory!, with: request)
+    }
+    
+    func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+//        SearchBoxColor = searchBar.searchTextField.backgroundColor!
+        
+        searchBar.searchTextField.backgroundColor = UIColor.init(hue: 240/360, saturation: 0.5, brightness: 0.8, alpha: 0.2)
+    }
+    
+    func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
+        searchBar.searchTextField.backgroundColor = nil
+        searchBar.text = ""
+        if let selCat = selectedCategory {
+            loadItems(cat: selCat)
+        }
+    }
 }
