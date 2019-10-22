@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class ToDoListViewController: UITableViewController {
+class ToDoListViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     
@@ -21,23 +22,46 @@ class ToDoListViewController: UITableViewController {
         }
     }
 
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        print("Will Appear!")
+        guard let colorHex = selectedCategory?.color else { fatalError("selectedCategory does not exist!") }
+        guard let navBar = navigationController?.navigationBar else { fatalError("Navigation controller doew not exist") }
+        
+        title = selectedCategory?.name
+        navBar.barTintColor = UIColor(hexString: colorHex)
+        searchBar.barTintColor = navBar.barTintColor
+        searchBar.searchTextField.backgroundColor = .white
+        navBar.tintColor = UIColor(contrastingBlackOrWhiteColorOn: UIColor(hexString: colorHex), isFlat: true)
+        navBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor : navBar.tintColor]
     }
 
 
     //MARK: TableView DataSource Methods
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoListCell", for: indexPath)
-        if let item = toDoItems?[indexPath.row] {
-            cell.textLabel?.text = item.title
-            cell.accessoryType = item.done ? .checkmark : .none
-        } else {
-            cell.textLabel?.text = "Create an item!"
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        let item = toDoItems?[indexPath.row]
+        cell.textLabel?.text = item?.title ?? "Create an item!"
+        if let backColor =  UIColor(hexString: selectedCategory!.color)?.darken(byPercentage: (CGFloat(Float(indexPath.row) / (2.0 * Float(toDoItems!.count))))) {
+            cell.backgroundColor = backColor
+            cell.textLabel?.textColor = UIColor.init(contrastingBlackOrWhiteColorOn: backColor, isFlat: true)
+            cell.accessoryType = item!.done ? .checkmark : .none
         }
         return cell
-        }
+    }
+    
+    //MARK: - Nav Bar Setup
+    
+    func updateNavBar(withHexCode colourHexCode: String) {
+        
+    }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return toDoItems?.count ?? 1
@@ -49,14 +73,8 @@ class ToDoListViewController: UITableViewController {
         
         if let item = toDoItems?[indexPath.row] {
             do {
-                if item.done == true {
-                    try realm.write {
-                        realm.delete(item)
-                    }
-                } else {
-                    try realm.write {
-                        item.done = !item.done
-                    }
+                try realm.write {
+                    item.done = !item.done
                 }
             } catch {
                 print("ERROR UPDATING \(error)")
@@ -106,16 +124,29 @@ class ToDoListViewController: UITableViewController {
         toDoItems = cat.items.sorted(byKeyPath: "title", ascending: false)
     }
 
-//    private func updateData() {
-//        print("itemArray")
-//    }
+    //MARK: - Delete Data from Swipe
+    override func updateModelUponDelete(at indexPath: IndexPath) {
+        super.updateModelUponDelete(at: indexPath)
+        if let itemForDelete = toDoItems?[indexPath.row] {
+            do {
+                try realm.write {
+                    realm.delete(itemForDelete)
+                }
+            } catch {
+                print("ERROR: Unable to delete item. \(error)")
+            }
+        }
+    }
+        
 }
 
 //MARK: - Search bar methods
 extension ToDoListViewController: UISearchBarDelegate {
 //
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        searchBar.text = searchText.lowercased()
+        print(searchText.last)
+        let filteredText = searchText.filter { $0 != "\t"}
+        searchBar.text = filteredText.lowercased()
         loadItems(cat: selectedCategory!)
         if searchText == "" {
             DispatchQueue.main.async {
@@ -131,11 +162,11 @@ extension ToDoListViewController: UISearchBarDelegate {
     }
 
     func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
-        searchBar.searchTextField.backgroundColor = UIColor.init(hue: 240/360, saturation: 0.5, brightness: 0.8, alpha: 0.2)
+        searchBar.searchTextField.backgroundColor = UIColor.init(hue: 0.0, saturation: 0.0, brightness: 0.8, alpha: 1.0)
     }
 
     func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
-        searchBar.searchTextField.backgroundColor = nil
+        searchBar.searchTextField.backgroundColor = .white
         searchBar.text = ""
         if let selCat = selectedCategory {
             loadItems(cat: selCat)

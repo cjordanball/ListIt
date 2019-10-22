@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     
@@ -19,21 +20,35 @@ class CategoryViewController: UITableViewController {
         super.viewDidLoad()
         loadCategories()
 
-
     }
 
     // MARK: - TableView DataSource Methods
     
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-        let item = categorArray?[indexPath.row]
-            cell.textLabel?.text = item?.name ?? "Create a category!"
-            return cell
-    }
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return categorArray?.count ?? 1
     }
+    
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        cell.textLabel?.text = categorArray?[indexPath.row].name ?? "Create a category!"
+        cell.backgroundColor = UIColor(hexString: categorArray?[indexPath.row].color ?? "1D98BF6")
+        cell.textLabel?.textColor = UIColor.init(contrastingBlackOrWhiteColorOn: cell.backgroundColor, isFlat: true)
+        return cell
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(true)
+        guard let navBar = navigationController?.navigationBar else {
+            fatalError("No Navigation Controller Available")
+        }
+        navBar.topItem?.title = "Categories"
+        navBar.barTintColor = UIColor(hexString: "1D98F6")
+        navBar.tintColor = UIColor.flatWhite()
+        navBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor : UIColor.flatWhite()]
+    }
+
+
 
     //MARK: - TableView Delegate Methods
     
@@ -47,8 +62,6 @@ class CategoryViewController: UITableViewController {
             destinationVC.selectedCategory = categorArray?[indexPath.row]
         }
     }
-    
-    
     
     //MARK: - Data Manipulation Methods
     func save(category: Category) {
@@ -66,6 +79,20 @@ class CategoryViewController: UITableViewController {
         categorArray = realm.objects(Category.self)
     }
     
+    //MARK: - Delete Data from Swipe
+    override func updateModelUponDelete(at indexPath: IndexPath) {
+        super.updateModelUponDelete(at: indexPath)
+        if let catForDelete = categorArray?[indexPath.row] {
+            do {
+                try realm.write {
+                    realm.delete(catForDelete)
+                }
+            } catch {
+                print("ERROR: Unable to delete. \(error)")
+            }
+        }
+    }
+    
     //MARK: - Add New Categories
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -77,7 +104,10 @@ class CategoryViewController: UITableViewController {
             //what happens upon click
             let newCategory = Category()
             newCategory.name = textField.text!
-            
+            newCategory.color = UIColor.randomFlat().hexValue()
+            if newCategory.name == "" {
+                return
+            }
             self.save(category: newCategory)
         }
         
@@ -90,8 +120,4 @@ class CategoryViewController: UITableViewController {
         
         present(alert, animated: true, completion: nil)
     }
-
-
-    
-    
 }
